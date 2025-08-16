@@ -24,21 +24,8 @@ namespace LibreLancer.Thn
         {
             FLLog.Error("Thn", $"({Time}): Unimplemented event: {Type}");
         }
-
-        public float GetT(float intime)
-        {
-            if (Duration <= 0) return 1;
-            if (intime > Duration) intime = Duration;
-            if (intime < 0) intime = 0;
-            if (ParamCurve != null) {
-                return ParamCurve.GetValue(intime, Duration);
-            }
-            else
-            {
-                return intime / Duration;
-            }
-        }
-public float GetT(double intime)
+        
+        public float GetT(double intime)
         {
             if (double.IsNaN(intime) || double.IsInfinity(intime)) intime = 0;
             if (Duration <= 0f) return 1f;
@@ -71,7 +58,6 @@ public float GetT(double intime)
                 if (GetValue(props, "param_curve", out ThornTable pcurve))
                 {
                     ParamCurve = new ParameterCurve(pcurve);
-                    GetValue(props, "pcurve_period", out ParamCurve.Period);
                     if (GetValue(props, "pcurve_period", out ParamCurve.Period))
         {
             if (float.IsNaN(ParamCurve.Period) || float.IsInfinity(ParamCurve.Period) || ParamCurve.Period <= 0f)
