@@ -25,8 +25,8 @@ namespace LibreLancer.Thn
         Queue<ThnEvent> events = new Queue<ThnEvent>();
         List<ThnEventProcessor> processors = new List<ThnEventProcessor>();
 
-const double EPS = 1e-6;
-bool firstFramePending = true;
+private const double EPS = 1e-6;
+private bool firstFramePending = true;
 
         public double CurrentTime = 0;
         public double Duration;
