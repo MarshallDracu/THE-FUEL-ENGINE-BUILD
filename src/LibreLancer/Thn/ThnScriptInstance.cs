@@ -286,36 +286,56 @@ namespace LibreLancer.Thn
         public void Update(double delta)
         {
             if (CurrentTime > Duration) return;
-            CurrentTime += delta;
-            //Don't run sound on T=0 exactly to avoid desync
-            while(delaySoundEvents.Count > 0 && CurrentTime > 0)
-                delaySoundEvents.Dequeue().Run(this);
-            while (events.Count > 0 && events.Peek().Time <= CurrentTime)
-            {
-                var ev = events.Dequeue();
-                if (delta <= 0 && (ev is StartSoundEvent || ev is StartAudioPropAnimEvent))
-                {
-                    delaySoundEvents.Enqueue(ev);
-                }
-                else
-                {
-                    ev.Run(this);
-                }
-            }
-            for (int i = 0; i < processors.Count; i++)
-            {
-                if (!processors[i].Run(delta))
-                {
-                    processors.RemoveAt(i);
-                    i--;
-                }
-            }
-            if (CurrentTime > Duration)
-                Shutdown();
+
+    // 1) przesuwamy czas o stały krok (Cutscene już podaje fixed-step),
+    //    ale zabezpieczamy się na ujemne/NaN:
+    if (double.IsNaN(delta) || double.IsInfinity(delta)) delta = 0;
+    if (delta < 0) delta = 0;
+
+    // poprzedni czas - przyda się do rozstrzygania eventów „dokładnie na granicy”
+    var prevTime = CurrentTime;
+    CurrentTime += delta;
+
+    // 2) dźwięki z t==0 opóźniamy do pierwszej "pełnej" klatki logicznej,
+    //    niezależnie od znaku delta (wcześniej robiło to tylko przy delta <= 0).
+    while (delaySoundEvents.Count > 0 && CurrentTime > EPS)
+        delaySoundEvents.Dequeue().Run(this);
+
+    // 3) odpalaj wszystkie eventy, których czas ≤ CurrentTime (+EPS tolerancji)
+    while (events.Count > 0 && events.Peek().Time <= CurrentTime + EPS)
+    {
+        var ev = events.Dequeue();
+
+        // jeśli to pierwszy „tick” (T≈0) i to event dźwiękowy startujący na 0,
+        // najpierw wrzuć go do opóźnienia, żeby odpalił od kolejnej klatki:
+        if (firstFramePending &&
+            ev.Time <= EPS &&
+            (ev is StartSoundEvent || ev is StartAudioPropAnimEvent))
+        {
+            delaySoundEvents.Enqueue(ev);
+            continue;
         }
 
-        public void Shutdown()
+        ev.Run(this);
+    }
+
+    // po pierwszej aktualizacji logiki czasu nie jesteśmy już na "pierwszej klatce"
+    if (firstFramePending && CurrentTime > EPS)
+        firstFramePending = false;
+
+    // 4) przetworniki/animatory per-frame
+    for (int i = 0; i < processors.Count; i++)
+    {
+        if (!processors[i].Run(delta))
         {
+            processors.RemoveAt(i);
+            i--;
+        }
+    }
+
+    if (CurrentTime > Duration + EPS)
+        Shutdown();
+}
             Cutscene.OnScriptFinished(thn);
             Cleanup();
         }
