@@ -72,21 +72,23 @@ namespace LibreLancer.Thn
             if (loop && HasOrientation && quaternions.Count > 0) {
                 quaternions.Add(quaternions[0]); // domknij orientacje
             }
-            if (points.Count < 2)
-                curve = points.Count > 2;
+if (points.Count < 2)
+    throw new Exception("Path does not have minimum two points");
 
-            startPoint = points[0];
-            endPoint = points[points.Count - 1];
-            if (HasOrientation && quaternions.Count > 0) {
-                startQuat = Quaternion.Normalize(quaternions[0]);
-                endQuat   = Quaternion.Normalize(quaternions[quaternions.Count - 1]);
-                if (curve) curveQuats = quaternions.ToArray();
-            }
-            //
-            if (curve)
-            {
-                BuildSegments(points);
-            }
+curve = points.Count > 2;
+
+startPoint = points[0];
+endPoint   = points[points.Count - 1];
+
+if (HasOrientation && quaternions.Count > 0) {
+    startQuat = Quaternion.Normalize(quaternions[0]);
+    endQuat   = Quaternion.Normalize(quaternions[quaternions.Count - 1]);
+    if (curve) curveQuats = quaternions.ToArray();
+}
+
+if (curve) {
+    BuildSegments(points);
+}
         }
 
         private CubicPolynomial[] segments;
