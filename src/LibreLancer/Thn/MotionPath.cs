@@ -153,6 +153,19 @@ if (curve) {
                     if (t <= seg0 + lengthPercents[i])
                     {
                         var t2 = (t - seg0) / lengthPercents[i];
+                        float seg0 = 0;
+for (int i = 0; i < segments.Length; i++)
+{
+    float segLen = lengthPercents[i];
+    float seg1 = seg0 + segLen;
+    if (t <= seg1)
+    {
+        var denom = (segLen <= 0 ? 1e-6f : segLen);
+        var t2 = (t - seg0) / denom;
+        return segments[i].ValueAt(t2);
+    }
+    seg0 = seg1;
+}
                         return segments[i].ValueAt(t2);
                     }
                     else
