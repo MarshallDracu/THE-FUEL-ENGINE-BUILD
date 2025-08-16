@@ -58,11 +58,30 @@ namespace LibreLancer.Thn
                 if (GetValue(props, "param_curve", out ThornTable pcurve))
                 {
                     ParamCurve = new ParameterCurve(pcurve);
-                    if (GetValue(props, "pcurve_period", out ParamCurve.Period))
+if (GetProps(table, out var props))
+{
+    // Najpierw duration
+    GetValue(props, "duration", out Duration);
+
+    if (GetValue(props, "param_curve", out ThornTable pcurve))
+    {
+        ParamCurve = new ParameterCurve(pcurve);
+
+        // pcurve_period do zmiennej tymczasowej
+        if (GetValue(props, "pcurve_period", out float period))
         {
-            if (float.IsNaN(ParamCurve.Period) || float.IsInfinity(ParamCurve.Period) || ParamCurve.Period <= 0f)
-                ParamCurve.Period = Duration > 0f ? Duration : 1f;
+            // normalizacja / fallback
+            if (float.IsNaN(period) || float.IsInfinity(period) || period <= 0f)
+                period = Duration > 0f ? Duration : 1f;
+
+            ParamCurve.Period = period;
         }
+        // (opcjonalnie) jeśli period nie podany, możesz też ustawić domyślnie:
+        // else if (ParamCurve.Period <= 0f)
+        //     ParamCurve.Period = Duration > 0f ? Duration : 1f;
+    }
+}
+
                 }
                 GetValue(props, "duration", out Duration);
             }
