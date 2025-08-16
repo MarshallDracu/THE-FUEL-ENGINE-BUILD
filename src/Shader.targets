@@ -73,18 +73,26 @@
          We pass all shaders at once to LLShaderCompiler as msbuild does not support
          running Exec tasks in parallel
      -->
-    <Target Name="ShaderCompiler" Condition="@(Shader)!=''"
-            Inputs="@(ShaderInputs)"
-            BeforeTargets="BeforeBuild;BeforeRebuild"
-            Outputs="@(ShaderOutputs)">
-        <MakeDir Directories="$(IntermediateOutputPath)%(Shader.RelativeDir)" Condition="!Exists('$(IntermediateOutputPath)%(Shader.RelativeDir)')" />
-        <Exec Command="$(LLShaderCompiler) $(DXC) --rsp $(IntermediateOutputPath)LLCompileShaders.rsp.txt"/>
-        <ItemGroup>
-            <EmbeddedResource Include="%(ShaderOutputs.Identity)">
-                <LogicalName>%(ShaderOutputs.Filename).bin</LogicalName>
-            </EmbeddedResource>
-        </ItemGroup>
-    </Target>
+<Target Name="ShaderCompiler" Condition="@(Shader)!=''"
+        Inputs="@(ShaderInputs)"
+        BeforeTargets="BeforeBuild;BeforeRebuild"
+        Outputs="@(ShaderOutputs)">
+
+  <MakeDir Directories="$(IntermediateOutputPath)%(Shader.RelativeDir)"
+           Condition="!Exists('$(IntermediateOutputPath)%(Shader.RelativeDir)')" />
+
+  <!-- ten sam fallback na kompilator co wyżej -->
+  <Error Condition="'$(LLShaderCompilerCmd)' == ''"
+         Text="LLShaderCompiler not found. Build src\LLShaderCompiler or pass -p:LLShaderCompilerPath=&quot;C:\path\LLShaderCompiler.exe&quot;" />
+
+  <Exec Command="&quot;$(LLShaderCompilerCmd)&quot; $(DXC) --rsp &quot;$(IntermediateOutputPath)LLCompileShaders.rsp.txt&quot;" />
+
+  <ItemGroup>
+    <EmbeddedResource Include="%(ShaderOutputs.Identity)">
+      <LogicalName>%(ShaderOutputs.Filename).bin</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Target>
 
 
 
