@@ -279,44 +279,54 @@ namespace LibreLancer.Thn
         private readonly ThnClock _clock = new ThnClock { UseFixedStep = true, PlaybackSpeed = 1.0 };
 		public void Update(double delta)
         {
-            if (lagCounter < LAG_LIMIT && delta > LAG_THRESHOLD)
-            {
-                lagCounter++;
-                return;
-            }
-            _Update(delta);
+        // Zero „frame-skipów”: clamp + stały krok zapewnia płynność i deterministykę
+        _clock.Tick(delta, (thnTime, step) =>
+        {
+        Step(step); // wykonaj jedną „klatkę” cutsceny o stałej długości 'step'
+        });
         }
 
-        public void _Update(double delta)
+        private void Step(double step)
         {
-            if (Running)
-            {
-                var pos = camera.Object.Translate;
-                var forward = Vector3.Transform(-Vector3.UnitZ, camera.Object.Rotate);
-                var up = Vector3.Transform(Vector3.UnitY, camera.Object.Rotate);
-                soundManager.UpdateListener(delta, pos, forward, up);
-            }
-			currentTime += delta;
-            foreach (var obj in sceneObjects.Values) obj.UpdateIfMain();
-            if (text != null)
-            {
-                if (currentTime > text.Start)
-                {
-                    //game.GetService<Interface.Typewriter>().PlayString(gameData.GetString(text.TextIDS));
-                    //text = null;
-                }
-            }
-            //
-            foreach (var instance in instances)
-            {
-                instance.Update(delta);
-            }
-            //
-            foreach (var obj in sceneObjects.Values) obj.Update();
-            camera.Update();
-            if(Renderer != null)
-			    World.Update(delta);
-		}
+        if (Running)
+        {
+        var pos     = camera.Object.Translate;
+        var forward = Vector3.Transform(-Vector3.UnitZ, camera.Object.Rotate);
+        var up      = Vector3.Transform(Vector3.UnitY,  camera.Object.Rotate);
+        soundManager.UpdateListener(step, pos, forward, up);
+        }
+
+        // stały timeline: rośnie o 'step' (60 Hz), a nie o „losowe” delta-klatkowe
+        currentTime += step;
+
+        // 1) pobierz aktualne pozycje main-obj (jak było)
+        foreach (var obj in sceneObjects.Values) obj.UpdateIfMain();
+
+        // 2) tekst/napisy jak było — używa currentTime
+        if (text != null)
+        {
+        if (currentTime > text.Start)
+        {
+            // TODO: odkomentuj zgodnie z Waszym UI
+            // game.GetService<Interface.Typewriter>().PlayString(gameData.GetString(text.TextIDS));
+            // text = null;
+        }
+        }
+
+        // 3) instancje skryptów: podajemy 'step' (stały krok), nie surowe delta
+        foreach (var instance in instances)
+        instance.Update(step);
+
+        // 4) odśwież obiekty THN (po instancjach)
+        foreach (var obj in sceneObjects.Values) obj.Update();
+
+        // 5) kamera
+        camera.Update();
+
+        // 6) świat gry / renderer (również na stałym kroku)
+        if (Renderer != null)
+        World.Update(step);
+        }
 
 		public void Draw(double delta, int renderWidth, int renderHeight)
         {
