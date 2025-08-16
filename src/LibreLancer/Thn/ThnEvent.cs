@@ -1,4 +1,4 @@
-﻿// MIT License - Copyright (c) Callum McGing
+// MIT License - Copyright (c) Callum McGing
 // This file is subject to the terms and conditions defined in
 // LICENSE, which is part of this source code package
 
@@ -8,13 +8,13 @@ using LibreLancer.World;
 
 namespace LibreLancer.Thn
 {
-	public abstract class ThnEvent
+    public abstract class ThnEvent
     {
         public float Duration;
-		public float Time;
+        public float Time;
         public string[] Targets;
         public EventTypes Type;
-		public ParameterCurve ParamCurve;
+        public ParameterCurve ParamCurve;
 
         protected ThnEvent()
         {
@@ -24,7 +24,7 @@ namespace LibreLancer.Thn
         {
             FLLog.Error("Thn", $"({Time}): Unimplemented event: {Type}");
         }
-        
+
         public float GetT(double intime)
         {
             if (double.IsNaN(intime) || double.IsInfinity(intime)) intime = 0;
@@ -49,47 +49,46 @@ namespace LibreLancer.Thn
 
         // zachowaj kompatybilność z istniejącymi wywołaniami
         public float GetT(float intime) => GetT((double)intime);
+
         protected ThnEvent(ThornTable table)
         {
-            Time = (float) table[1];
+            Time = (float)table[1];
             Type = ThnTypes.Convert<EventTypes>(table[2]);
+
+            // Właściwości zdarzenia
             if (GetProps(table, out var props))
             {
-                if (GetValue(props, "param_curve", out ThornTable pcurve))
-                {
-                    ParamCurve = new ParameterCurve(pcurve);
-if (GetProps(table, out var props))
-{
-    // Najpierw duration
-    GetValue(props, "duration", out Duration);
-
-    if (GetValue(props, "param_curve", out ThornTable pcurve))
-    {
-        ParamCurve = new ParameterCurve(pcurve);
-
-        // pcurve_period do zmiennej tymczasowej
-        if (GetValue(props, "pcurve_period", out float period))
-        {
-            // normalizacja / fallback
-            if (float.IsNaN(period) || float.IsInfinity(period) || period <= 0f)
-                period = Duration > 0f ? Duration : 1f;
-
-            ParamCurve.Period = period;
-        }
-        // (opcjonalnie) jeśli period nie podany, możesz też ustawić domyślnie:
-        // else if (ParamCurve.Period <= 0f)
-        //     ParamCurve.Period = Duration > 0f ? Duration : 1f;
-    }
-}
-
-                }
+                // duration
                 GetValue(props, "duration", out Duration);
+
+                // param_curve
+                if (GetValue(props, "param_curve", out ThornTable paramCurveTable))
+                {
+                    ParamCurve = new ParameterCurve(paramCurveTable);
+
+                    // pcurve_period (opcjonalny)
+                    if (GetValue(props, "pcurve_period", out float period))
+                    {
+                        // sanity-check + fallback
+                        if (float.IsNaN(period) || float.IsInfinity(period) || period <= 0f)
+                            period = (Duration > 0f) ? Duration : 1f;
+
+                        ParamCurve.Period = period;
+                    }
+                    else
+                    {
+                        // jeśli nie podano, można ustawić sensowny domyślny okres
+                        if (ParamCurve.Period <= 0f)
+                            ParamCurve.Period = (Duration > 0f) ? Duration : 1f;
+                    }
+                }
             }
-            var targetTable = (ThornTable) table[3];
+
+            // cele (targets)
+            var targetTable = (ThornTable)table[3];
             Targets = new string[targetTable.Length];
-            for (int i = 1; i <= Targets.Length; i++) {
-                Targets[i-1] = (string)targetTable[i];
-            }
+            for (int i = 1; i <= Targets.Length; i++)
+                Targets[i - 1] = (string)targetTable[i];
         }
 
         protected static bool GetValue<T>(ThornTable table, string key, out T result, T def = default(T))
@@ -108,7 +107,7 @@ if (GetProps(table, out var props))
             props = null;
             if (table.Length >= 4)
             {
-                props = (ThornTable) table[4];
+                props = (ThornTable)table[4];
                 return true;
             }
             return false;
@@ -123,7 +122,5 @@ if (GetProps(table, out var props))
             }
             return obj.GetHardpoint(hp);
         }
-
     }
 }
-
