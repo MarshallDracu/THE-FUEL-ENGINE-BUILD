@@ -276,6 +276,7 @@ namespace LibreLancer.Thn
         private int lagCounter = 0;
         private int LAG_LIMIT = 5;
         private const double LAG_THRESHOLD = 1 / 20.0;
+        private readonly ThnClock _clock = new ThnClock { UseFixedStep = true, PlaybackSpeed = 1.0 };
 		public void Update(double delta)
         {
             if (lagCounter < LAG_LIMIT && delta > LAG_THRESHOLD)
