@@ -19,8 +19,19 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <LLShaderCompiler>"$(MSBuildThisFileDirectory)\LLShaderCompiler\bin\Debug\net8.0\LLShaderCompiler"</LLShaderCompiler>
-    </PropertyGroup>
+  <!-- użytkownik może nadpisać: -p:LLShaderCompilerPath="C:\...\LLShaderCompiler.exe" -->
+  <_UserLLSC>$(LLShaderCompilerPath)</_UserLLSC>
+
+  <!-- domyślne ścieżki względem Shader.targets -->
+  <_LLSCDir>$(MSBuildThisFileDirectory)LLShaderCompiler\bin\$(Configuration)\net8.0\</_LLSCDir>
+  <_LLSCExe>$(_LLSCDir)LLShaderCompiler.exe</_LLSCExe>
+  <_LLSCDll>$(_LLSCDir)LLShaderCompiler.dll</_LLSCDll>
+
+  <!-- wybór komendy (EXE / dotnet DLL / user override) -->
+  <LLShaderCompilerCmd Condition="'$(_UserLLSC)' != ''">$(_UserLLSC)</LLShaderCompilerCmd>
+  <LLShaderCompilerCmd Condition="'$(LLShaderCompilerCmd)' == '' and Exists('$(_LLSCExe)')">$(_LLSCExe)</LLShaderCompilerCmd>
+  <LLShaderCompilerCmd Condition="'$(LLShaderCompilerCmd)' == '' and Exists('$(_LLSCDll)')">dotnet &quot;$(_LLSCDll)&quot;</LLShaderCompilerCmd>
+</PropertyGroup>
 
     <!-- Writes the arguments out required for LLShaderCompiler. Use files to avoid cmd limit-->
     <!-- "%0a" gives us a newline in MSBuild so we can interleave input/output-->
