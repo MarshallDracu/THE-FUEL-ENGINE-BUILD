@@ -135,45 +135,38 @@ if (curve) {
                     lengthPercents[i] = segmentLengths[i] / totalLength;
             }
         }
-        public Vector3 GetPosition(float t)
-        {
-            if (t >= 1) return endPoint;
-            if (t <= 0) return startPoint;
-            if(!curve)
-            {
-                float dist = Vector3.Distance(startPoint, endPoint);
-                var direction = (endPoint - startPoint).Normalized();
-                return startPoint + (direction * (dist * t));
-            }
-            else
-            {
-                float seg0 = 0;
-                for (int i = 0; i < segments.Length; i++)
-                {
-                    if (t <= seg0 + lengthPercents[i])
-                    {
-                        var t2 = (t - seg0) / lengthPercents[i];
-                        float seg0 = 0;
-for (int i = 0; i < segments.Length; i++)
+public Vector3 GetPosition(float t)
 {
-    float segLen = lengthPercents[i];
-    float seg1 = seg0 + segLen;
-    if (t <= seg1)
+    if (t >= 1) return endPoint;
+    if (t <= 0) return startPoint;
+
+    if (!curve)
     {
-        var denom = (segLen <= 0 ? 1e-6f : segLen);
-        var t2 = (t - seg0) / denom;
-        return segments[i].ValueAt(t2);
+        float dist = Vector3.Distance(startPoint, endPoint);
+        var direction = (endPoint - startPoint).Normalized();
+        return startPoint + (direction * (dist * t));
     }
-    seg0 = seg1;
-}
-                        return segments[i].ValueAt(t2);
-                    }
-                    else
-                        seg0 += lengthPercents[i];
-                }
-                throw new Exception("Something has gone horribly wrong in MotionPath");
+    else
+    {
+        float seg0 = 0;
+        for (int i = 0; i < segments.Length; i++)
+        {
+            float segLen = lengthPercents[i];
+            float seg1 = seg0 + segLen;
+
+            if (t <= seg1)
+            {
+                var denom = (segLen <= 0 ? 1e-6f : segLen);
+                var t2 = (t - seg0) / denom;   // t2 w [0..1] w obrębie segmentu
+                return segments[i].ValueAt(t2);
             }
+
+            seg0 = seg1;
         }
+        throw new Exception("Something has gone horribly wrong in MotionPath");
+    }
+}
+
 
         public Vector3 GetDirection(float t, bool reverse = false)
         {
