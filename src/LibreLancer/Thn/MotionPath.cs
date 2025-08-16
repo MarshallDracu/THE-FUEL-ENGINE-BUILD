@@ -59,9 +59,7 @@ namespace LibreLancer.Thn
             loop = type == CLOSED;
             //detect if orientations are present
             var orient = (ThornTable)path[3];
-            if (orient.Length >= 4) {
-                HasOrientation = true;
-            }
+            HasOrientation = orient != null && orient.Length >= 4;
             var points = new List<Vector3>();
             var quaternions = new List<Quaternion>();
             //Construct path
@@ -71,20 +69,19 @@ namespace LibreLancer.Thn
                 else
                     points.Add(GetVec(path[i]));
             }
-            if(loop) {
-                quaternions.Add(quaternions[0]);
+            if (loop && HasOrientation && quaternions.Count > 0) {
+                quaternions.Add(quaternions[0]); // domknij orientacje
             }
-            if(points.Count < 2)
-                throw new Exception("Path does not have minimum two points");
-            if (points.Count > 2) {
-                curve = true;
-                curveQuats = quaternions.ToArray();
-            }
+            if (points.Count < 2)
+                curve = points.Count > 2;
 
             startPoint = points[0];
             endPoint = points[points.Count - 1];
-            startQuat = quaternions[0];
-            endQuat = quaternions[quaternions.Count - 1];
+            if (HasOrientation && quaternions.Count > 0) {
+                startQuat = Quaternion.Normalize(quaternions[0]);
+                endQuat   = Quaternion.Normalize(quaternions[quaternions.Count - 1]);
+                if (curve) curveQuats = quaternions.ToArray();
+            }
             //
             if (curve)
             {
@@ -127,9 +124,13 @@ namespace LibreLancer.Thn
                 segmentLengths[i] = len;
                 totalLength += len;
             }
-            for (int i = 0; i < segments.Length; i++)
-            {
-                lengthPercents[i] = segmentLengths[i] / totalLength;
+            if (totalLength <= float.Epsilon) {
+                float even = 1f / segments.Length;
+                for (int i = 0; i < segments.Length; i++)
+                    lengthPercents[i] = even;
+            } else {
+                for (int i = 0; i < segments.Length; i++)
+                    lengthPercents[i] = segmentLengths[i] / totalLength;
             }
         }
         public Vector3 GetPosition(float t)
@@ -161,50 +162,62 @@ namespace LibreLancer.Thn
 
         public Vector3 GetDirection(float t, bool reverse = false)
         {
+            const float STEP = 0.0025f;
+
             if (!curve)
             {
-                if (reverse)
-                    return (endPoint - startPoint).Normalized();
-                return (startPoint - endPoint).Normalized();
+                var dir = (endPoint - startPoint);
+                if (!reverse)
+                    return dir.LengthSquared() > 0 ? dir.Normalized() : Vector3.UnitZ;
+                else
+                    return dir.LengthSquared() > 0 ? (-dir).Normalized() : Vector3.UnitZ;
             }
+
             t = MathHelper.Clamp(t, 0, 1);
+
             if (reverse)
             {
-                if (t <= 0.0025f)
-                {
-                    return (GetPosition(0.0025f) - GetPosition(0) ).Normalized();
-                }
-                return (GetPosition(t) - GetPosition(t - 0.0025f)).Normalized();
+                var t0 = MathHelper.Clamp(t - STEP, 0, 1);
+                var v  = GetPosition(t) - GetPosition(t0);
+                return v.LengthSquared() > 0 ? v.Normalized() : GetDirection(t0, reverse);
             }
-            if (t >= 0.9925f)
+            else
             {
-                return (GetPosition(0.9925f) - GetPosition(1) ).Normalized();
+                var t1 = MathHelper.Clamp(t + STEP, 0, 1);
+                var v  = GetPosition(t1) - GetPosition(t);
+                return v.LengthSquared() > 0 ? v.Normalized() : GetDirection(t1, reverse);
             }
-            return (GetPosition(t) - GetPosition(t + 0.0025f) ).Normalized();
         }
         public Quaternion GetOrientation(float t)
         {
             if (!HasOrientation)
                 throw new NotSupportedException();
+
             if (t <= 0) return startQuat;
             if (t >= 1) return endQuat;
-            if (curve)
+
+            t = MathHelper.Clamp(t, 0, 1);
+
+            if (curve && curveQuats != null && curveQuats.Length >= 2)
             {
                 float seg0 = 0;
                 for (int i = 0; i < segments.Length; i++)  {
-                    if (t <= seg0 + lengthPercents[i])
+                    float seg1 = seg0 + lengthPercents[i];
+                    if (t <= seg1)
                     {
-                        var t2 = (t - seg0) / lengthPercents[i];
-                        return Quaternion.Slerp(curveQuats[i], curveQuats[i + 1], t2);
+                        var denom = (lengthPercents[i] <= 0 ? 1e-6f : lengthPercents[i]);
+                        var t2 = (t - seg0) / denom;
+                        var s  = t2 * t2 * (3f - 2f * t2); // smoothstep
+                        return Quaternion.Normalize(Quaternion.Slerp(curveQuats[i], curveQuats[i + 1], s));
                     }
-
-                    seg0 += lengthPercents[i];
+                    seg0 = seg1;
                 }
                 throw new Exception("Something has gone horribly wrong in MotionPath");
             }
             else
             {
-                return Quaternion.Slerp(startQuat, endQuat, t);
+                var s = t * t * (3f - 2f * t); // smoothstep
+                return Quaternion.Normalize(Quaternion.Slerp(startQuat, endQuat, s));
             }
         }
 
