@@ -38,7 +38,30 @@ namespace LibreLancer.Thn
                 return intime / Duration;
             }
         }
+public float GetT(double intime)
+        {
+            if (double.IsNaN(intime) || double.IsInfinity(intime)) intime = 0;
+            if (Duration <= 0f) return 1f;
+            if (intime < 0) intime = 0;
+            if (intime > Duration) intime = Duration;
 
+            float t;
+            if (ParamCurve != null)
+            {
+                t = ParamCurve.GetValue((float)intime, Duration);
+                if (float.IsNaN(t) || float.IsInfinity(t)) t = 0f;
+                if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
+            }
+            else
+            {
+                t = (float)(intime / Duration);
+                if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
+            }
+            return t;
+        }
+
+        // zachowaj kompatybilność z istniejącymi wywołaniami
+        public float GetT(float intime) => GetT((double)intime);
         protected ThnEvent(ThornTable table)
         {
             Time = (float) table[1];
@@ -49,6 +72,11 @@ namespace LibreLancer.Thn
                 {
                     ParamCurve = new ParameterCurve(pcurve);
                     GetValue(props, "pcurve_period", out ParamCurve.Period);
+                    if (GetValue(props, "pcurve_period", out ParamCurve.Period))
+        {
+            if (float.IsNaN(ParamCurve.Period) || float.IsInfinity(ParamCurve.Period) || ParamCurve.Period <= 0f)
+                ParamCurve.Period = Duration > 0f ? Duration : 1f;
+        }
                 }
                 GetValue(props, "duration", out Duration);
             }
